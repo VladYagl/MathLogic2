@@ -42,18 +42,8 @@ object ExpressionParser {
     }
 
     private fun parseLogicUnary(text: String): Expression {
-        fun checkCorrectBraces(text: String): Boolean {
-            var balance = 0
-            text.forEach {
-                if (it == '(') balance++
-                if (it == ')') balance--
-                if (balance < 0) return false
-            }
-            return balance == 0
-        }
-
         val token = text.trim()
-        if (token.first() == '(' && token.last() == ')' && checkCorrectBraces(token.drop(1).dropLast(1)))
+        if (token.first() == '(' && token.last() == ')' && checkCorrectBrackets(token.drop(1).dropLast(1)))
             return logicParser.parse(token.substring(1, token.length - 1))
         when (token.first()) {
             '%' -> return Replaceable(token.drop(1))
@@ -72,7 +62,7 @@ object ExpressionParser {
     private val logicParser = OperatorParser(logicOperators, { parseLogicUnary(it) })
     private val termParser = OperatorParser(terms, { parseTermUnary(it) })
 
-    internal fun parse(text: String): Expression {
+    fun parse(text: String): Expression {
         //text = text.replace(" |\t|\r".toRegex(), "")
         return logicParser.parse(text)
     }

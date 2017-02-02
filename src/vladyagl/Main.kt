@@ -8,35 +8,48 @@ import java.util.*
 
 private val suppositions = ArrayList<Expression>()
 private val proof = ArrayList<Expression>()
-private val lines = ArrayList<String>()
+
+fun checkCorrectBrackets(text: String): Boolean {
+    var balance = 0
+    text.forEach {
+        if (it == '(') balance++
+        if (it == ')') balance--
+        if (balance < 0) return false
+    }
+    return balance == 0
+}
 
 fun main(args: Array<String>) {
-    val file = File("res\\input.txt")
-    var header = ""
-    try {
-        BufferedReader(FileReader(file)).use { reader ->
-            header = reader.readLine()
-            val headers = header.split(",|\\|-".toRegex()).dropLastWhile(String::isEmpty).toTypedArray()
-            (0..headers.size - 1 - 1).takeWhile { !headers[it].isEmpty() }
-                    .mapTo(suppositions) { ExpressionParser.parse(headers[it]) }
-            var line: String? = reader.readLine()
-            while (line != null) {
-                if (line.isEmpty()) {
-                    continue
+    File(args.first()).walk().forEach { file ->
+        if (file.isDirectory) return@forEach
+        println("Test: $file")
+        //val file = File("res\\input.txt")
+        try {
+            BufferedReader(FileReader(file)).use { reader ->
+                val header = reader.readLine().split("|-").first()
+                var last = 0
+                (header + ',').mapIndexedNotNullTo(suppositions) { i, c ->
+                    if (c == ',' && checkCorrectBrackets(header.substring(i))) {
+                        val tmp = last
+                        last = i + 1
+                        ExpressionParser.parse(header.substring(tmp, i))
+                    } else null
                 }
-                proof.add(ExpressionParser.parse(line))
-                lines.add(line)
-                line = reader.readLine()
+                var line: String? = reader.readLine()
+                while (line != null) {
+                    if (line.isEmpty()) {
+                        continue
+                    }
+                    proof.add(ExpressionParser.parse(line))
+                    line = reader.readLine()
+                }
             }
+        } catch (e: IOException) {
+            e.printStackTrace()
         }
-    } catch (e: IOException) {
-        e.printStackTrace()
-    }
 
-    val checker = ProofChecker(suppositions, proof)
-    /*checker.annotate()
-    println(header)
-    for (i in lines.indices) {
-        System.out.printf("(" + (i + 1) + ") " + lines[i] + " (" + checker.getAnnotation(i) + ")\n")
-    }*/
+        ProofChecker.check(suppositions, proof)
+        suppositions.clear()
+        proof.clear()
+    }
 }

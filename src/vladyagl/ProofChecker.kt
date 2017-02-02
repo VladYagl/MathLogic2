@@ -2,7 +2,7 @@ package vladyagl
 
 import java.util.*
 
-class ProofChecker(suppositionList: ArrayList<Expression>, val proof: ArrayList<Expression>) {
+object ProofChecker {
     private val axiomSchemas = arrayOf(
             ExpressionParser.parse("%A->%B->%A"),
             ExpressionParser.parse("(%A->%B)->(%A->%B->%C)->(%A->%C)"),
@@ -93,11 +93,12 @@ class ProofChecker(suppositionList: ArrayList<Expression>, val proof: ArrayList<
                 checkInductionAxiom(expression)
     }
 
-    fun checkQuantifierRule(expression: Expression): Boolean {
+    fun checkQuantifierRule(expression: Expression, freeVariables: Set<String>?): Boolean {
         if (expression !is Implication) return false
 
         fun check(expression: Expression, quant: Quantifier, impl: Expression): Boolean =
                 !expression.getFreeVariables().contains(quant.variable.varName) &&
+                !(freeVariables?.contains(quant.variable.varName) ?: false) &&
                         proofed.containsKey(impl.toString())
 
         val left = expression.left
@@ -116,17 +117,19 @@ class ProofChecker(suppositionList: ArrayList<Expression>, val proof: ArrayList<
         }.reduce(Boolean::or)
     }
 
-    init {
+    fun check(suppositionList: ArrayList<Expression>, proof: ArrayList<Expression>) {
+        suppositions.clear()
+        proofed.clear()
+        proofedList.clear()
         suppositionList.forEachIndexed { i, expression -> suppositions.put(expression.toString(), i) }
 
-        println("Start Proofing")
-        //println(axiomSchemas.joinToString(separator = "\n\n"))
+        val alpha = suppositionList.lastOrNull()
 
         run loop@ {
             proof.forEachIndexed { i, proofLine ->
                 if (isAxiom(proofLine) ||
                         suppositions.contains(proofLine.toString()) ||
-                        checkQuantifierRule(proofLine) ||
+                        checkQuantifierRule(proofLine, alpha?.getFreeVariables()) ||
                         checkModusPonens(proofLine)) {
                     proofed.put(proofLine.toString(), i)
                     proofedList.add(proofLine)
@@ -134,11 +137,8 @@ class ProofChecker(suppositionList: ArrayList<Expression>, val proof: ArrayList<
                     println("OLOLO YOU ARE NOT CORRECT AT: {$i}")
                     return@loop
                 }
-                if (i % 100 == 0) {
-                    println("HO HO HO I'VE CHECKED $i LINES")
-                }
             }
+            println("WTF YOU ARE RIGHT")
         }
-        println("WTF YOU ARE RIGHT")
     }
 }
