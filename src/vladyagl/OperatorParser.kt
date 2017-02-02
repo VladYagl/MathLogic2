@@ -1,7 +1,12 @@
 package vladyagl
 
-class OperatorParser<out T: Expression>(val operators: List<OperatorFactory<T>>, val parseToken: (String) -> T) {
-    private fun parse(text: String, level: Int): T {
+class OperatorParser<S : Expression>(val operators: List<OperatorCreator<S>>, val parseToken: (String) -> S) {
+
+    operator fun Int.plus(other: Boolean) : Int {
+        return if (other) this.plus(1) else plus(0)
+    }
+
+    private fun parse(text: String, level: Int): S {
         if (level >= operators.size) {
             return parseToken(text)
         }
@@ -23,8 +28,8 @@ class OperatorParser<out T: Expression>(val operators: List<OperatorFactory<T>>,
             return parse(text, level + 1)
         } else {
             try {
-                val first : T = parse(text.substring(0, position), level + 1)
-                val second : T = parse(text.substring(position + operators[level].symbol.length), level)
+                val first : S = parse(text.substring(0, position), level + !type.leftPriority)
+                val second : S = parse(text.substring(position + operators[level].symbol.length), level + type.leftPriority)
                 return operators[level].create(first, second)
             } catch (e: Exception) {
                 throw ParseException("Error while parsing: " + text, e)
@@ -32,7 +37,7 @@ class OperatorParser<out T: Expression>(val operators: List<OperatorFactory<T>>,
         }
     }
 
-    fun parse(text: String) : T {
+    fun parse(text: String) : S {
         return parse(text, 0)
     }
 }

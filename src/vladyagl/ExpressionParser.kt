@@ -2,21 +2,21 @@ package vladyagl
 
 object ExpressionParser {
     private val logicOperators = listOf(
-            ExpressionFactory("__Implication__", size = 2, symbol = "->", leftPriority = false),
-            ExpressionFactory("__Disjunction__", size = 2, symbol = "|"),
-            ExpressionFactory("__Conjunction__", size = 2, symbol = "&")
+            OperatorCreator<Expression>(symbol = "->", leftPriority = false, factory = ::Implication),
+            OperatorCreator<Expression>(symbol = "|", factory = ::Disjunction),
+            OperatorCreator<Expression>(symbol = "&", factory = ::Conjunction)
     )
 
     private val terms = listOf(
-            TermFactory("__Sum__", size = 2, symbol = "+"),
-            TermFactory("__Multiply__", size = 2, symbol = "*")
+            OperatorCreator<Term>(symbol = "+", factory = ::Addition),
+            OperatorCreator<Term>(symbol = "*", factory = ::Multiplication)
     )
 
     private fun parseTermUnary(text: String): Term {
         val token = text.trim()
         when {
             token.takeLast(1) == "'" -> return Stroke(termParser.parse(token.dropLast(1)))
-            token[0] == '(' -> return termParser.parse(token.substring(1, token.length - 1))
+            token.first() == '(' -> return termParser.parse(token.substring(1, token.length - 1))
             token.takeLast(1) == ")" -> {
                 val name = token.substringBefore('(')
                 val arguments = token.dropLast(1).substringAfter('(').split(",")
@@ -31,29 +31,39 @@ object ExpressionParser {
         if (text.contains('=')) {
             return Equality(termParser.parse(text.substringBefore('=')), termParser.parse(text.substringAfter('=')))
         } else {
-            val name = text.substringBefore('(')
-            val arguments = text.substringAfter('(').dropLast(1).split(",")
-            return Predicate(name, *arguments.map { termParser.parse(it) }.toTypedArray())
+            if (text.contains('(')) {
+                val name = text.substringBefore('(')
+                val arguments = text.substringAfter('(').dropLast(1).split(",")
+                return Predicate(name, *arguments.map { termParser.parse(it) }.toTypedArray())
+            } else {
+                return Predicate(text)
+            }
         }
     }
 
     private fun parseLogicUnary(text: String): Expression {
+        fun checkCorrectBraces(text: String): Boolean {
+            var balance = 0
+            text.forEach {
+                if (it == '(') balance++
+                if (it == ')') balance--
+                if (balance < 0) return false
+            }
+            return balance == 0
+        }
+
         val token = text.trim()
-        when (token[0]) {
-            '%' -> if (token.contains("["))
-                return Replaceable(
-                        token.drop(1).substringBefore("["),
-                        token.drop(1).substringAfter("[").substringBefore(":="),
-                        token.drop(1).substringAfter(":=").substringBefore("]"))
-            else
-                return Replaceable(token.drop(1))
+        if (token.first() == '(' && token.last() == ')' && checkCorrectBraces(token.drop(1).dropLast(1)))
+            return logicParser.parse(token.substring(1, token.length - 1))
+        when (token.first()) {
+            '%' -> return Replaceable(token.drop(1))
             '!' -> return Negation(parseLogicUnary(token.drop(1)))
-            '(' -> return logicParser.parse(token.substring(1, token.length - 1))
+            //'(' -> return logicParser.parse(token.substring(1, token.length - 1))
             '?', '@' -> {
                 val position = token.drop(1).indexOfFirst { !it.isLowerCase() && !it.isDigit() }
                 val variable = Variable(token.drop(1).take(position))
                 val args = parseLogicUnary(token.drop(position + 1))
-                return if (token[0] == '?') Existential(variable, args) else Universal(variable, args)
+                return if (token.first() == '?') Existential(variable, args) else Universal(variable, args)
             }
             else -> return parsePredicate(token)
         }
