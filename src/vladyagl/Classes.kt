@@ -12,13 +12,13 @@ open class Term(name: String, vararg termArgs: Term) : Predicate(name, *termArgs
 
 // LOGIC
 
-class Conjunction(val left: Expression, val right: Expression) : Expression("__Conjunction__", left, right)
+class Conjunction(val left: Expression, val right: Expression) : Expression("__Conjunction__", "&" ,left, right)
 
-class Disjunction(val left: Expression, val right: Expression) : Expression("__Disjunction__", left, right)
+class Disjunction(val left: Expression, val right: Expression) : Expression("__Disjunction__", "|", left, right)
 
-class Implication(val left: Expression, val right: Expression) : Expression("__Implication__", left, right)
+class Implication(val left: Expression, val right: Expression) : Expression("__Implication__", "->", left, right)
 
-class Negation(val expression: Expression) : Expression("__Negation__", expression)
+class Negation(val expression: Expression) : Expression("__Negation__", "-", expression)
 
 // QUANTIFIERS
 

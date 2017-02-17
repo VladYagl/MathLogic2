@@ -2,7 +2,7 @@ package vladyagl
 
 import java.util.*
 
-open class Quantifier(name: String, val variable: Variable, val expression: Expression) : Expression(name, expression) {
+open class Quantifier(name: String, val variable: Variable, val expression: Expression) : Expression(name, null, expression) {
 
     override fun getFreeVariables(): Set<String> {
         return expression.getFreeVariables() - variable.varName

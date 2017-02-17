@@ -3,7 +3,7 @@ package vladyagl
 import java.util.*
 
 @Suppress("EqualsOrHashCode")
-open class Expression(val name: String, vararg argsTemp: Expression) {
+open class Expression(val name: String, val symbol: String? = null, vararg argsTemp: Expression) {
     val TAB = "   "
 
     //Returns first not equal node
@@ -30,7 +30,7 @@ open class Expression(val name: String, vararg argsTemp: Expression) {
 
     //Guaranties same toString but not same types
     open fun substitute(other: Expression, varName: String) : Expression {
-        return Expression(name, *args.map{ it.substitute(other, varName)}.toTypedArray())
+        return Expression(name, symbol, *args.map{ it.substitute(other, varName)}.toTypedArray())
     }
 
     fun treeEquals(other: Expression, variableMap: HashMap<String, String> = HashMap()): Boolean {

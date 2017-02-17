@@ -57,7 +57,7 @@ object ProofChecker {
             val varName = quant.variable.varName
             return if (phi.isFreeToSubstitute(theta, varName)) {
                 phi.substitute(theta, varName).toString() == expression.toString()
-            } else false
+            } else throw SubstituteException(varName)
         }
 
         val left = expression.left
@@ -97,9 +97,14 @@ object ProofChecker {
         if (expression !is Implication) return false
 
         fun check(expression: Expression, quant: Quantifier, impl: Expression): Boolean =
-                !expression.getFreeVariables().contains(quant.variable.varName) &&
-                !(freeVariables?.contains(quant.variable.varName) ?: false) &&
-                        proofed.containsKey(impl.toString())
+                proofed.containsKey(impl.toString()) &&
+                        if (freeVariables?.contains(quant.variable.varName) ?: false)
+                            throw QuantifierRuleVariableException(quant.variable.varName)
+                        else if (expression.getFreeVariables().contains(quant.variable.varName))
+                            throw FreeVariableException(quant.variable.varName, proofed[impl.toString()] as Int)
+                        else
+                            true
+
 
         val left = expression.left
         val right = expression.right
@@ -127,14 +132,26 @@ object ProofChecker {
 
         run loop@ {
             proof.forEachIndexed { i, proofLine ->
-                if (isAxiom(proofLine) ||
-                        suppositions.contains(proofLine.toString()) ||
-                        checkQuantifierRule(proofLine, alpha?.getFreeVariables()) ||
-                        checkModusPonens(proofLine)) {
-                    proofed.put(proofLine.toString(), i)
+                var errorMessage: String? = null
+                if (try {
+                    isAxiom(proofLine) ||
+                            suppositions.contains(proofLine.toString()) ||
+                            checkQuantifierRule(proofLine, alpha?.getFreeVariables()) ||
+                            checkModusPonens(proofLine)
+                } catch (e: QuantifierRuleVariableException) {
+                    errorMessage = "используется правило с квантором по переменной <${e.varName}>, свободно входящей в допущение."
+                    false
+                } catch (e: FreeVariableException) {
+                    errorMessage = "переменная <${e.varName}> входит свободно в формулу ${e.expressionNumber}."
+                    false
+                } catch (e: SubstituteException) {
+                    errorMessage = "терм не свободен для подстановки вместо переменной <${e.varName}>."
+                    false
+                }) {
+                    proofed.put(proofLine.toString(), i + 1)
                     proofedList.add(proofLine)
                 } else {
-                    println("OLOLO YOU ARE NOT CORRECT AT: {$i}")
+                    println("Вывод некорректен начиная с формулы номер ${i + 1} ${if (errorMessage != null) ": " + errorMessage else ""}")
                     return@loop
                 }
             }

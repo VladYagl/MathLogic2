@@ -23,7 +23,6 @@ fun main(args: Array<String>) {
     File(args.first()).walk().forEach { file ->
         if (file.isDirectory) return@forEach
         println("Test: $file")
-        //val file = File("res\\input.txt")
         try {
             BufferedReader(FileReader(file)).use { reader ->
                 val header = reader.readLine().split("|-").first()
