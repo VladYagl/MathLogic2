@@ -177,37 +177,37 @@ class ProofChecker {
         val phi = proofLine.args[1]
         val existential = proofLine.args[0] as Existential
         val psi = existential.expression
-        val implication = Implication(alpha, Implication(psi, phi))
+        val implication = Implication(alpha, Implication(psi, phi))             // alpha -> psi -> phi
 
         suppositions.add(implication)
         suppositions.add(psi)
         suppositions.add(alpha)
 
-        proof.add(alpha)
-        proof.add(psi)
-        proof.add(implication)
-        proof.add(implication.right)
-        proof.add(phi)
+        proof.add(alpha)                                                        // alpha
+        proof.add(psi)                                                          // psi
+        proof.add(implication)                                                  // alpha -> psi -> phi
+        proof.add(implication.right)                                            // psi -> phi
+        proof.add(phi)                                                          // phi
 
         val newProof = ArrayList<Expression>()
-        ProofChecker().check(suppositions, proof, phi) { newProof.add(it) }
-        ProofChecker().check(suppositions.dropLast(1), newProof, Implication(alpha, phi), printExpression)
+        ProofChecker().check(suppositions, proof, phi) { newProof.add(it) }     // alpha -> phi
+        ProofChecker().check(suppositions.dropLast(1), newProof, Implication(alpha, phi), printExpression)   // psi -> alpha -> phi
         suppositions.clear()
         proof.clear()
         newProof.clear()
 
-        val existRule = Implication(existential, Implication(alpha, phi))
-        printExpression(existRule)
+        val existRule = Implication(existential, Implication(alpha, phi))       // ?x psi -> alpha -> phi
+        printExpression(existRule)                                              // ?x psi -> alpha -> phi
 
-        suppositions.add(existRule)
-        suppositions.add(alpha)
-        suppositions.add(existential)
+        suppositions.add(existRule)                                             // ?x psi -> alpha -> phi
+        suppositions.add(alpha)                                                 // alpha
+        suppositions.add(existential)                                           // ?x psi
 
-        proof.add(alpha)
-        proof.add(existential)
-        proof.add(existRule)
-        proof.add(existRule.right)
-        proof.add(phi)
+        proof.add(alpha)                                                        // alpha
+        proof.add(existential)                                                  // ?x psi
+        proof.add(existRule)                                                    // ?x psi -> alpha -> phi
+        proof.add(existRule.right)                                              // alpha -> phi
+        proof.add(phi)                                                          // phi
 
         ProofChecker().check(suppositions, proof, phi) { newProof.add(it) }
         ProofChecker().check(suppositions.dropLast(1), newProof, proofLine, printExpression)
