@@ -26,11 +26,16 @@ open class Variable(val varName: String) : Term("__Variable[$varName]__") {
         return true
     }
 
-    override fun substitute(other: Expression, varName: String): Expression {
+    override fun substitute(other: Expression, varName: String): Term{
         if (varName == this.varName) {
+            if (other !is Term) throw SubstituteError(varName, other)
             return other
         } else {
             return this
         }
+    }
+
+    override fun toString(): String {
+        return varName
     }
 }

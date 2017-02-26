@@ -2,7 +2,7 @@ package vladyagl
 
 import java.util.*
 
-open class Replaceable(val varName: String) : Term("__Replaceable[$varName]__") {
+open class Replaceable(val varName: String) : Expression("__Replaceable[$varName]__") {
     override fun nodeEquals(other: Expression, variableMap: HashMap<String, String>): Boolean {
         throw NotImplementedError()
     }
@@ -16,6 +16,10 @@ open class Replaceable(val varName: String) : Term("__Replaceable[$varName]__") 
     }
 
     override fun substitute(other: Expression, varName: String): Expression {
-        throw NotImplementedError()
+        if (varName == this.varName) {
+            return other
+        } else {
+            return this
+        }
     }
 }

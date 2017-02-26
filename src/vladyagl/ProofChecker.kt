@@ -2,7 +2,11 @@ package vladyagl
 
 import java.util.*
 
-object ProofChecker {
+fun HashMap<String, Int>.add(expression: Expression) {
+    this.put(expression.toString(), this.size)
+}
+
+class ProofChecker {
     private val axiomSchemas = arrayOf(
             ExpressionParser.parse("%A->%B->%A"),
             ExpressionParser.parse("(%A->%B)->(%A->%B->%C)->(%A->%C)"),
@@ -53,11 +57,11 @@ object ProofChecker {
 
         fun check(expression: Expression, quant: Quantifier): Boolean {
             val phi = quant.expression
-            val theta = expression - phi ?: return true
+            val theta = (expression - phi ?: return true) as? Term ?: return false
             val varName = quant.variable.varName
             return if (phi.isFreeToSubstitute(theta, varName)) {
                 phi.substitute(theta, varName).toString() == expression.toString()
-            } else throw SubstituteException(varName)
+            } else throw SubstituteException(varName, theta, phi)
         }
 
         val left = expression.left
@@ -101,7 +105,7 @@ object ProofChecker {
                         if (freeVariables?.contains(quant.variable.varName) ?: false)
                             throw QuantifierRuleVariableException(quant.variable.varName)
                         else if (expression.getFreeVariables().contains(quant.variable.varName))
-                            throw FreeVariableException(quant.variable.varName, proofed[impl.toString()] as Int)
+                            throw FreeVariableException(quant.variable.varName, impl)
                         else
                             true
 
@@ -112,42 +116,182 @@ object ProofChecker {
                 (left is Existential && check(right, left, Implication(left.expression, right)))
     }
 
-    fun checkModusPonens(expression: Expression): Boolean {
-        if (proofedList.isEmpty()) return false
-        return proofedList.map {
+    fun checkModusPonens(expression: Expression): Expression? {
+        if (proofedList.isEmpty()) return null
+        return proofedList.find {
             if (it !is Implication)
                 false
             else
                 proofed.contains(it.left.toString()) && it.right.toString() == expression.toString()
-        }.reduce(Boolean::or)
+        }
     }
 
-    fun check(suppositionList: ArrayList<Expression>, proof: ArrayList<Expression>) {
+    fun processForAllRule(proofLine: Expression, alpha: Expression, printExpression: (Expression) -> Unit) {
+        val suppositions: ArrayList<Expression> = ArrayList()
+        val proof: ArrayList<Expression> = ArrayList()
+        val phi = proofLine.args[0]
+        val universal = proofLine.args[1] as Universal
+        val conjunction = Conjunction(alpha, phi)
+        val psi = universal.expression
+
+        suppositions.add(Implication(alpha, Implication(phi, psi)))             // alpha -> phi -> psi
+        suppositions.add(conjunction)                                           // alpha & phi
+
+        proof.add(conjunction)                                                  // alpha & phi
+        proof.add(axiomSchemas[3].substitute(alpha, "A").substitute(phi, "B"))  // alpha & phi -> alpha
+        proof.add(axiomSchemas[4].substitute(alpha, "A").substitute(phi, "B"))  // alpha & phi -> phi
+        proof.add(alpha)                                                        // alpha
+        proof.add(phi)                                                          // phi
+        proof.add(Implication(alpha, Implication(phi, psi)))                    // alpha -> phi -> psi
+        proof.add(Implication(phi, psi))                                        // phi -> psi
+        proof.add(psi)                                                          // psi
+
+        ProofChecker().check(suppositions, proof, psi, printExpression)         // alpha & phi -> psi
+        suppositions.clear()
+        proof.clear()
+
+        val forAllRule = Implication(conjunction, universal)                    // alpha & phi -> @x psi
+        val axiom = axiomSchemas[2].substitute(alpha, "A").substitute(phi, "B") // alpha -> phi -> alpha & phi
+        printExpression(forAllRule)
+
+        suppositions.add(forAllRule)
+        suppositions.add(alpha)
+        suppositions.add(phi)
+
+        proof.add(alpha)                                                        // alpha
+        proof.add(phi)                                                          // phi
+        proof.add(axiom)                                                        // alpha -> phi -> alpha & phi
+        proof.add(axiom.args[1])                                                // phi -> alpha & phi
+        proof.add(axiom.args[1].args[1])                                        // alpha & phi
+        proof.add(forAllRule)                                                   // alpha & phi -> @x psi
+        proof.add(universal)                                                    // @x psi
+
+        val newProof = ArrayList<Expression>()
+        ProofChecker().check(suppositions, proof, universal) { newProof.add(it) }
+        ProofChecker().check(suppositions.dropLast(1), newProof, proofLine, printExpression)
+    }
+
+    fun processExistRule(proofLine: Expression, alpha: Expression, printExpression: (Expression) -> Unit) {
+        val suppositions: ArrayList<Expression> = ArrayList()
+        val proof: ArrayList<Expression> = ArrayList()
+        val phi = proofLine.args[1]
+        val existential = proofLine.args[0] as Existential
+        val psi = existential.expression
+        val implication = Implication(alpha, Implication(psi, phi))
+
+        suppositions.add(implication)
+        suppositions.add(psi)
+        suppositions.add(alpha)
+
+        proof.add(alpha)
+        proof.add(psi)
+        proof.add(implication)
+        proof.add(implication.right)
+        proof.add(phi)
+
+        val newProof = ArrayList<Expression>()
+        ProofChecker().check(suppositions, proof, phi) { newProof.add(it) }
+        ProofChecker().check(suppositions.dropLast(1), newProof, Implication(alpha, phi), printExpression)
+        suppositions.clear()
+        proof.clear()
+        newProof.clear()
+
+        val existRule = Implication(existential, Implication(alpha, phi))
+        printExpression(existRule)
+
+        suppositions.add(existRule)
+        suppositions.add(alpha)
+        suppositions.add(existential)
+
+        proof.add(alpha)
+        proof.add(existential)
+        proof.add(existRule)
+        proof.add(existRule.right)
+        proof.add(phi)
+
+        ProofChecker().check(suppositions, proof, phi) { newProof.add(it) }
+        ProofChecker().check(suppositions.dropLast(1), newProof, proofLine, printExpression)
+    }
+
+    fun processLine(proofLine: Expression, suppositions: Map<String, Int>, alpha: Expression?, println: (Expression) -> Unit): Pair<Boolean, String?> {
+        try {
+            val modusPonens = checkModusPonens(proofLine)
+            val result = if (isAxiom(proofLine)) {
+                println(proofLine)
+                alpha?.let {
+                    val axiom = axiomSchemas[0].substitute(proofLine, "A").substitute(alpha, "B")
+                    println(axiom)          // proofLine -> alpha -> proofLine
+                    println(axiom.args[1])  // alpha -> proofLine
+                }
+                true
+            } else if (suppositions.contains(proofLine.toString())) {
+                alpha?.let {
+                    if (alpha.toString() == proofLine.toString()) {
+                        val axiomAAA = axiomSchemas[0].substitute(alpha, "A").substitute(alpha, "B")
+                        val axiomAAAA = axiomSchemas[0].substitute(alpha, "A").substitute(Implication(alpha, alpha), "B")
+                        val axiom = axiomSchemas[1].substitute(alpha, "A").substitute(Implication(alpha, alpha), "B").substitute(alpha, "C")
+                        println(axiomAAA)               // alpha -> alpha -> alpha
+                        println(axiomAAAA)              // alpha -> (alpha -> alpha) -> alpha
+                        println(axiom)                  // (alpha -> (alpha -> alpha)) -> (alpha -> (alpha -> alpha) -> alpha) -> (alpha -> alpha)
+                        println(axiom.args[1])          // (alpha -> (alpha -> alpha) -> alpha) -> (alpha -> alpha)"
+                        println(axiom.args[1].args[1])  // (alpha -> alpha)
+                    } else {
+                        val axiom = axiomSchemas[0].substitute(proofLine, "A").substitute(alpha, "B")
+                        println(proofLine)
+                        println(axiom)          // proofLine -> alpha -> proofLine
+                        println(axiom.args[1])  // alpha -> proofLine
+                    }
+                } ?:
+                        println(proofLine)
+                true
+            } else if (modusPonens != null) {
+                alpha?.let {
+                    val axiom = axiomSchemas[1].substitute(alpha, "A").substitute(modusPonens.args[0], "B").substitute(proofLine, "C")
+                    println(axiom)                  // (alpha -> modusPonens) -> (alpha -> modusPonens -> proofLine) -> (alpha -> proofLine)
+                    println(axiom.args[1])          // (alpha -> modusPonens -> proofLine) -> (alpha -> proofLine)
+                    println(axiom.args[1].args[1])  // (alpha -> proofLine)
+                } ?:
+                        println(proofLine)
+                true
+            } else if (checkQuantifierRule(proofLine, alpha?.getFreeVariables())) {
+                alpha?.let {
+                    if (proofLine.args[1] is Universal) {
+                        processForAllRule(proofLine, alpha, println)
+                    } else {
+                        processExistRule(proofLine, alpha, println)
+                    }
+                } ?:
+                        println(proofLine)
+                true
+            } else false
+            return Pair(result, null)
+        } catch (e: QuantifierRuleVariableException) {
+            return Pair(false, "используется правило с квантором по переменной <${e.varName}>, свободно входящей в допущение. ${alpha!!}")
+        } catch (e: FreeVariableException) {
+            return Pair(false, "переменная <${e.varName}> входит свободно в формулу ${e.expression}.")
+        } catch (e: SubstituteException) {
+            return Pair(false, "терм <${e.term}> не свободен для подстановки в формулу <${e.expression}> вместо переменной <${e.varName}>.")
+        } catch (e: SubstituteError) {
+            e.printStackTrace(System.out)
+            return Pair(false, "Ошибка подстановки. ${e.varName}  -->  ${e.expression}")
+        } catch (e: Exception) {
+            e.printStackTrace(System.out)
+            return Pair(false, "Неизвестная ошибка")
+        }
+    }
+
+    fun check(suppositionList: List<Expression>, proof: List<Expression>, expression: Expression, printExpression: (Expression) -> Unit): Boolean {
         suppositions.clear()
         proofed.clear()
         proofedList.clear()
-        suppositionList.forEachIndexed { i, expression -> suppositions.put(expression.toString(), i) }
+        suppositionList.forEach { suppositions.add(it) }
 
         val alpha = suppositionList.lastOrNull()
 
         run loop@ {
             proof.forEachIndexed { i, proofLine ->
-                var errorMessage: String? = null
-                if (try {
-                    isAxiom(proofLine) ||
-                            suppositions.contains(proofLine.toString()) ||
-                            checkQuantifierRule(proofLine, alpha?.getFreeVariables()) ||
-                            checkModusPonens(proofLine)
-                } catch (e: QuantifierRuleVariableException) {
-                    errorMessage = "используется правило с квантором по переменной <${e.varName}>, свободно входящей в допущение."
-                    false
-                } catch (e: FreeVariableException) {
-                    errorMessage = "переменная <${e.varName}> входит свободно в формулу ${e.expressionNumber}."
-                    false
-                } catch (e: SubstituteException) {
-                    errorMessage = "терм не свободен для подстановки вместо переменной <${e.varName}>."
-                    false
-                }) {
+                val (result, errorMessage) = processLine(proofLine, suppositions, alpha, printExpression)
+                if (result) {
                     proofed.put(proofLine.toString(), i + 1)
                     proofedList.add(proofLine)
                 } else {
@@ -155,7 +299,11 @@ object ProofChecker {
                     return@loop
                 }
             }
-            println("WTF YOU ARE RIGHT")
+            if (proof.isNotEmpty() && proof.last() != expression) {
+                println("Последняя строчка не совпадает с доказуемым.")
+            }
+            return true
         }
+        return false
     }
 }

@@ -2,7 +2,7 @@ package vladyagl
 
 import java.util.*
 
-open class Quantifier(name: String, val variable: Variable, val expression: Expression) : Expression(name, null, expression) {
+open class Quantifier(name: String, symbol: String, val variable: Variable, val expression: Expression) : Expression(name, symbol, expression) {
 
     override fun getFreeVariables(): Set<String> {
         return expression.getFreeVariables() - variable.varName
@@ -17,7 +17,7 @@ open class Quantifier(name: String, val variable: Variable, val expression: Expr
     override fun substitute(other: Expression, varName: String): Expression {
         if (varName != variable.varName) {
             //We loose our class type (such as Universal or Existential) but it still better then commented version
-            return Quantifier(name, variable, expression.substitute(other, varName))
+            return Quantifier(name, symbol!!, variable, expression.substitute(other, varName))
             //return = this.javaClass.getConstructor(Variable::class.java, Expression::class.java)
             //        .newInstance(variable, expression.substitute(other, varName))
         } else {
@@ -43,5 +43,9 @@ open class Quantifier(name: String, val variable: Variable, val expression: Expr
 
     override fun nodeToString(level: Int): String {
         return "$name{$variable}"
+    }
+
+    override fun toString(): String {
+        return "$symbol${variable.varName}($expression)"
     }
 }

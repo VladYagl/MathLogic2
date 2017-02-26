@@ -7,11 +7,11 @@ open class Expression(val name: String, val symbol: String? = null, vararg argsT
     val TAB = "   "
 
     //Returns first not equal node
-    operator fun minus(other: Expression) : Expression? {
+    operator fun minus(other: Expression): Expression? {
         return if (name == other.name) {
             args.mapIndexed { i, expression ->
                 expression - other.args[i]
-            }.firstOrNull{ it != null }
+            }.firstOrNull { it != null }
         } else {
             return this
         }
@@ -29,8 +29,8 @@ open class Expression(val name: String, val symbol: String? = null, vararg argsT
     }
 
     //Guaranties same toString but not same types
-    open fun substitute(other: Expression, varName: String) : Expression {
-        return Expression(name, symbol, *args.map{ it.substitute(other, varName)}.toTypedArray())
+    open fun substitute(other: Expression, varName: String): Expression {
+        return Expression(name, symbol, *args.map { it.substitute(other, varName) }.toTypedArray())
     }
 
     fun treeEquals(other: Expression, variableMap: HashMap<String, String> = HashMap()): Boolean {
@@ -51,7 +51,7 @@ open class Expression(val name: String, val symbol: String? = null, vararg argsT
         return other is Expression && name == other.name
     }
 
-    override fun toString(): String {
+    fun toStringOld(): String {
         return toStringTree(0)
     }
 
@@ -66,5 +66,25 @@ open class Expression(val name: String, val symbol: String? = null, vararg argsT
 
     open protected fun nodeToString(level: Int): String {
         return name
+    }
+
+    override fun toString(): String {
+        return if (symbol == null) {
+            name + if (args.isNotEmpty()) args.map(Expression::toString).joinToString(separator = ", ", prefix = "(", postfix = ")") else ""
+        } else {
+            if (args.isEmpty()) {
+                symbol
+            } else if (args.size == 1) {
+                if (name == "__Stroke__") {
+                    "(${args.first()})$symbol"
+                } else {
+                    "$symbol(${args.first()})"
+                }
+            } else if (args.size == 2) {
+                "(${args.first()})$symbol(${args.last()})"
+            } else {
+                throw UnsupportedOperationException()
+            }
+        }
     }
 }

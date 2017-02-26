@@ -20,7 +20,7 @@ object ExpressionParser {
             token.takeLast(1) == ")" -> {
                 val name = token.substringBefore('(')
                 val arguments = token.dropLast(1).substringAfter('(').split(",")
-                return Term(name, *arguments.map { termParser.parse(it) }.toTypedArray())
+                return Term(name, null, *arguments.map { termParser.parse(it) }.toTypedArray())
             }
             token == "0" -> return Zero()
             else -> return Variable(token)
@@ -34,7 +34,7 @@ object ExpressionParser {
             if (text.contains('(')) {
                 val name = text.substringBefore('(')
                 val arguments = text.substringAfter('(').dropLast(1).split(",")
-                return Predicate(name, *arguments.map { termParser.parse(it) }.toTypedArray())
+                return Predicate(name, null, *arguments.map { termParser.parse(it) }.toTypedArray())
             } else {
                 return Predicate(text)
             }
