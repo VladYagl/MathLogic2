@@ -21,7 +21,7 @@ open class Expression(val name: String, val symbol: String? = null, vararg argsT
 
     open fun getFreeVariables(): Set<String> {
         return if (args.isEmpty()) HashSet()
-        else args.map(Expression::getFreeVariables).reduce(Set<String>::union)
+        else args.map(Expression::getFreeVariables).reduce { set, other -> set.union(other) }
     }
 
     open fun isFreeToSubstitute(other: Expression, varName: String): Boolean {
@@ -51,6 +51,7 @@ open class Expression(val name: String, val symbol: String? = null, vararg argsT
         return other is Expression && name == other.name
     }
 
+    @Deprecated("")
     fun toStringOld(): String {
         return toStringTree(0)
     }
@@ -68,23 +69,46 @@ open class Expression(val name: String, val symbol: String? = null, vararg argsT
         return name
     }
 
-    override fun toString(): String {
-        return if (symbol == null) {
-            name + if (args.isNotEmpty()) args.map(Expression::toString).joinToString(separator = ", ", prefix = "(", postfix = ")") else ""
-        } else {
-            if (args.isEmpty()) {
-                symbol
-            } else if (args.size == 1) {
-                if (name == "__Stroke__") {
-                    "(${args.first()})$symbol"
+    private fun toStingNull() : String {
+        return name + if (args.isNotEmpty()) args.map(Expression::toString).joinToString(separator = ", ", prefix = "(", postfix = ")") else ""
+    }
+
+    private fun toStringNotNull(symbol: String): String {
+        return if (args.isEmpty()) {
+            symbol
+        } else if (args.size == 1) {
+            if (name == "__Stroke__") {
+                if (args.first().name == "__Stroke__") {
+                    args.first().toString() + symbol
                 } else {
-                    "$symbol(${args.first()})"
+                    "(" + args.first() + ")" + symbol
                 }
-            } else if (args.size == 2) {
-                "(${args.first()})$symbol(${args.last()})"
             } else {
-                throw UnsupportedOperationException()
+                symbol + "(" + args.first() + ")"
             }
+        } else if (args.size == 2) {
+            "(" + args.first() + ")" + symbol + "(" + args.last() + ")"
+        } else {
+            throw UnsupportedOperationException()
         }
     }
+
+    override fun toString(): String {
+        return if (symbol == null) {
+            toStingNull()
+        } else {
+            toStringNotNull(symbol)
+        }
+    }
+
+    annotation class Special(val why: String)
+
+    open val left
+        get() = if (args.size == 2) args[1] else throw UnsupportedOperationException()
+
+    open val right
+        get() = if (args.size == 2) args[0] else throw UnsupportedOperationException()
+
+    open val expression
+        get() = if (args.size == 1) args[0] else throw UnsupportedOperationException()
 }

@@ -23,18 +23,18 @@ open class Term(name: String, symbol: String? = null, vararg termArgs: Term) : P
 
 // LOGIC
 
-class Conjunction(val left: Expression, val right: Expression) : Expression("__Conjunction__", "&", left, right)
+class Conjunction(override val left: Expression, override val right: Expression) : Expression("__Conjunction__", "&", left, right)
 
-class Disjunction(val left: Expression, val right: Expression) : Expression("__Disjunction__", "|", left, right)
+class Disjunction(override val left: Expression, override val right: Expression) : Expression("__Disjunction__", "|", left, right)
 
-class Implication(val left: Expression, val right: Expression) : Expression("__Implication__", "->", left, right) {
+class Implication(override val left: Expression, override val right: Expression) : Expression("__Implication__", "->", left, right) {
 
     override fun substitute(other: Expression, varName: String): Implication {
         return Implication(left = left.substitute(other, varName), right = right.substitute(other, varName))
     }
 }
 
-class Negation(val expression: Expression) : Expression("__Negation__", "!", expression)
+class Negation(override val expression: Expression) : Expression("__Negation__", "!", expression)
 
 // QUANTIFIERS
 
@@ -44,13 +44,13 @@ class Existential(variable: Variable, expression: Expression) : Quantifier("__Ex
 
 // PREDICATES
 
-class Equality(val left: Term, val right: Term) : Predicate("__Equality__", "=", left, right)
+class Equality(override val left: Term, override val right: Term) : Predicate("__Equality__", "=", left, right)
 
 // TERM
 
-class Addition(val left: Term, val right: Term) : Term("__Sum__", "+", left, right)
+class Addition(override val left: Term, override val right: Term) : Term("__Sum__", "+", left, right)
 
-class Multiplication(val left: Term, val right: Term) : Term("__Multiply__", "*", left, right)
+class Multiplication(override val left: Term, override val right: Term) : Term("__Multiply__", "*", left, right)
 
 class Stroke(val term: Term) : Term("__Stroke__", "'", term)
 

@@ -2,7 +2,7 @@ package vladyagl
 
 class OperatorParser<S : Expression>(val operators: List<OperatorCreator<S>>, val parseToken: (String) -> S) {
 
-    operator fun Int.plus(other: Boolean): Int {
+    private operator fun Int.plus(other: Boolean): Int {
         return if (other) this.plus(1) else plus(0)
     }
 

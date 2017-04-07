@@ -36,7 +36,11 @@ object ExpressionParser {
                 val arguments = text.substringAfter('(').dropLast(1).split(",")
                 return Predicate(name, null, *arguments.map { termParser.parse(it) }.toTypedArray())
             } else {
-                return Predicate(text)
+                if (text.trim().contains("[^a-zA-Z0-9_]".toRegex())) {
+                    return termParser.parse(text)
+                } else {
+                    return Predicate(text)
+                }
             }
         }
     }
