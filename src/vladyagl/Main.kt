@@ -43,6 +43,7 @@ fun processFile(file: File, writer: Writer, parseHeader: Boolean = true, showSta
             while (line != null) {
                 if (!line.isEmpty() && line.trim().first() != '#') {
                     proof.add(line.parse()!!)
+//                    println(proof.size)
                 }
                 line = reader.readLine()
             }
