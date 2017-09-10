@@ -67,7 +67,13 @@ fun processFile(file: File, writer: Writer, parseHeader: Boolean = true, showSta
     statusThread = if (showStatus) getStatusThread(checker) else Thread()
 
     statusThread.start()
-    if (checker.check(suppositions, proof, expression!!) { writer.appendln(it.toString()) }) {
+
+    var count = 0
+
+    if (checker.check(suppositions, proof, expression!!) {
+        writer.appendln(it.toString())
+        count++
+    }) {
         println("Вывод корректен")
     }
     statusThread.interrupt()

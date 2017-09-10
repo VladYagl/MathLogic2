@@ -5,12 +5,13 @@ import java.util.*
 open class Variable(val varName: String) : Term("__Variable[$varName]__") {
     override fun nodeEquals(other: Expression, variableMap: HashMap<String, String>): Boolean {
         return if (other is Variable) {
-            if (variableMap.containsKey(varName)) {
-                variableMap[varName] == other.varName
-            } else {
-                variableMap[varName] = other.varName
-                true
-            }
+            return varName == other.varName
+//            if (variableMap.containsKey(varName)) {
+//                variableMap[varName] == other.varName
+//            } else {
+//                variableMap[varName] = other.varName
+//                true
+//            }
         } else {
             false
         }
